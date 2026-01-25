@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InternHub - Pro Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        :root {
+            --bg-dark: #0F172A;
+            --accent-indigo: #6366F1;
+            --accent-emerald: #10B981;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-dark);
+            color: #F8FAFC;
+            min-height: 100vh;
+        }
+
+        /* PERBAIKAN INPUT AGAR TULISAN TERLIHAT JELAS */
+        .form-control {
+            background: rgba(0, 0, 0, 0.2) !important; /* Latar input lebih gelap */
+            border: 1px solid var(--glass-border);
+            color: #ffffff !important; /* Tulisan putih terang */
+            border-radius: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            background: rgba(0, 0, 0, 0.4) !important; /* Lebih gelap saat diklik */
+            border-color: var(--accent-indigo);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Utility */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 1.5rem;
+        }
+
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+        .bento-item-large { grid-column: span 2; grid-row: span 2; }
+        .bento-item-wide { grid-column: span 2; }
+        
+        @media (max-width: 992px) { .bento-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 576px) { 
+            .bento-grid { grid-template-columns: 1fr; }
+            .bento-item-large, .bento-item-wide { grid-column: span 1; }
+        }
+
+        .btn-indigo { background: var(--accent-indigo); color: white; border-radius: 14px; border: none; padding: 10px 20px; font-weight: 600; }
+        .stat-badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.2px; color: #94A3B8; }
+        .section-hidden { display: none; }
+        .pointer { cursor: pointer; }
+        .badge-skill {
+            background: linear-gradient(135deg, var(--accent-emerald), #059669);
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            margin: 4px;
+            display: inline-flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark pt-4 pb-4 section-hidden" id="main-nav">
+        <div class="container">
+            <span class="navbar-brand fw-bold fs-4"><i class="bi bi-layers-half me-2"></i>InternHub</span>
+            <div class="d-flex align-items-center gap-3">
+                <div class="text-end d-none d-md-block">
+                    <div id="nav-user-name" class="fw-bold small">User</div>
+                    <div id="quote-display" class="text-secondary" style="font-size: 0.7rem;"></div>
+                </div>
+                <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container pb-5">
+        
+        <section id="auth-section" class="mx-auto" style="max-width: 400px; margin-top: 100px;">
+            <div class="glass-card">
+                <h3 id="auth-title" class="fw-bold text-center mb-4 text-white">Hello!</h3>
+                <div id="login-form">
+                    <input type="email" id="login-email" class="form-control mb-3 py-2" placeholder="Email">
+                    <input type="password" id="login-password" class="form-control mb-3 py-2" placeholder="Password">
+                    <button class="btn btn-indigo w-100 py-3" onclick="login()">Masuk ke Dashboard</button>
+                    <p class="text-center mt-3 small text-secondary">Baru di sini? <a href="#" class="text-info text-decoration-none" onclick="toggleAuth(false)">Daftar Akun</a></p>
+                </div>
+                <div id="register-form" class="section-hidden">
+                    <input type="text" id="reg-name" class="form-control mb-3 py-2" placeholder="Nama Panggilan">
+                    <input type="email" id="reg-email" class="form-control mb-3 py-2" placeholder="Email">
+                    <input type="password" id="reg-password" class="form-control mb-3 py-2" placeholder="Password (Min. 6 Karakter)">
+                    <button class="btn btn-indigo w-100 py-3" onclick="register()">Mulai Magang</button>
+                    <p class="text-center mt-3 small text-secondary">Sudah ada akun? <a href="#" class="text-info text-decoration-none" onclick="toggleAuth(true)">Login</a></p>
+                </div>
+            </div>
+        </section>
+
+        <section id="dashboard-section" class="section-hidden">
+            <div class="row g-4 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="glass-card py-3">
+                        <div class="stat-badge">Total Logs</div>
+                        <h2 id="stat-logs" class="fw-bold mb-0">0</h2>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card py-3">
+                        <div class="stat-badge">Skills</div>
+                        <h2 id="stat-skills" class="fw-bold mb-0">0</h2>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card py-3 border-info border-opacity-25">
+                        <div class="stat-badge text-info">Days Left</div>
+                        <h2 id="stat-days" class="fw-bold mb-0 text-info">0</h2>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="glass-card py-3">
+                        <div class="stat-badge">Progress</div>
+                        <h2 id="stat-pct" class="fw-bold mb-0">0%</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bento-grid">
+                <div class="glass-card bento-item-wide">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-rocket-takeoff me-2"></i>Internship Progress</h6>
+                    <div class="progress mb-3" style="height: 10px; background: rgba(255,255,255,0.05);">
+                        <div id="tracker-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%; background: var(--accent-indigo);"></div>
+                    </div>
+                    <p id="tracker-text" class="small mb-0 text-secondary fw-semibold"></p>
+                </div>
+
+                <div class="glass-card bento-item-large d-flex flex-column">
+                    <div class="d-flex justify-content-between mb-4">
+                        <h6 class="fw-bold mb-0 text-white">Daily Logbook</h6>
+                        <span class="badge bg-primary bg-opacity-25 text-info small pointer" onclick="copyToClipboard()">Salin Semua</span>
+                    </div>
+                    <div class="mb-4">
+                        <input type="text" id="log-task" class="form-control mb-2 py-2" placeholder="Judul tugas hari ini...">
+                        <textarea id="log-desc" class="form-control mb-3 py-2" rows="2" placeholder="Ceritakan detail pengerjaannya..."></textarea>
+                        <button class="btn btn-indigo w-100 py-2" onclick="addLog()">Simpan Aktivitas</button>
+                    </div>
+                    <div id="log-container" class="overflow-auto pe-2" style="max-height: 400px;"></div>
+                </div>
+
+                <div class="glass-card">
+                    <h6 class="fw-bold mb-3 text-white">Work Directory</h6>
+                    <div class="mb-3">
+                        <input type="text" id="contact-name" class="form-control form-control-sm mb-2" placeholder="Nama Orang">
+                        <input type="text" id="contact-info" class="form-control form-control-sm mb-2" placeholder="Jabatan/Kontak">
+                        <button class="btn btn-outline-light btn-sm w-100 rounded-pill" onclick="addContact()">Tambah</button>
+                    </div>
+                    <div id="contact-container" class="overflow-auto" style="max-height: 150px;"></div>
+                </div>
+
+                <div class="glass-card">
+                    <h6 class="fw-bold mb-2 text-white">Skill Learned</h6>
+                    <div class="input-group mb-3">
+                        <input type="text" id="skill-input" class="form-control form-control-sm" placeholder="Contoh: Excel Expert">
+                        <button class="btn btn-indigo btn-sm px-3" onclick="addSkill()"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    <div id="skill-container"></div>
+                </div>
+
+                <div class="glass-card bento-item-wide d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex gap-4">
+                        <div>
+                            <label class="stat-badge d-block mb-1">Mulai Magang</label>
+                            <input type="date" id="start-date-input" class="form-control form-control-sm" onchange="updateProfile()">
+                        </div>
+                        <div>
+                            <label class="stat-badge d-block mb-1 text-info">Total Hari</label>
+                            <input type="number" id="duration-input" class="form-control form-control-sm border-info" onchange="updateProfile()" style="width: 100px;">
+                        </div>
+                    </div>
+                    <button class="btn btn-success rounded-pill px-4 fw-bold" onclick="exportData()">Export .TXT</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let users = JSON.parse(localStorage.getItem('internhub_users')) || [];
+        let currentUser = JSON.parse(localStorage.getItem('internhub_session')) || null;
+        let logs = [], contacts = [], skills = [];
+
+        const quotes = ["Make every day count.", "Small steps, big results.", "Stay focused, stay humble."];
+
+        window.onload = () => {
+            if (currentUser) showDashboard();
+            document.getElementById('quote-display').innerText = quotes[Math.floor(Math.random() * quotes.length)];
+        };
+
+        function toggleAuth(isLogin) {
+            document.getElementById('login-form').classList.toggle('section-hidden', !isLogin);
+            document.getElementById('register-form').classList.toggle('section-hidden', isLogin);
+            document.getElementById('auth-title').innerText = isLogin ? 'Welcome Back!' : 'Join InternHub';
+        }
+
+        function register() {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            if (!name || !email || pass.length < 6) return alert("Cek kembali data pendaftaran!");
+            const newUser = { name, email, pass: btoa(pass), startDate: new Date().toISOString().split('T')[0], duration: 90 };
+            users.push(newUser);
+            localStorage.setItem('internhub_users', JSON.stringify(users));
+            alert("Berhasil! Silakan login.");
+            toggleAuth(true);
+        }
+
+        function login() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            const user = users.find(u => u.email === email && u.pass === btoa(pass));
+            if (user) {
+                currentUser = user;
+                localStorage.setItem('internhub_session', JSON.stringify(user));
+                showDashboard();
+            } else alert("Email atau Password salah!");
+        }
+
+        function logout() { localStorage.removeItem('internhub_session'); location.reload(); }
+
+        function showDashboard() {
+            document.getElementById('auth-section').classList.add('section-hidden');
+            document.getElementById('main-nav').classList.remove('section-hidden');
+            document.getElementById('dashboard-section').classList.remove('section-hidden');
+            document.getElementById('nav-user-name').innerText = currentUser.name;
+            
+            const key = currentUser.email.replace(/[@.]/g, '_');
+            logs = JSON.parse(localStorage.getItem(`${key}_logs`)) || [];
+            contacts = JSON.parse(localStorage.getItem(`${key}_contacts`)) || [];
+            skills = JSON.parse(localStorage.getItem(`${key}_skills`)) || [];
+            
+            document.getElementById('start-date-input').value = currentUser.startDate;
+            document.getElementById('duration-input').value = currentUser.duration;
+            refreshUI();
+        }
+
+        function updateProfile() {
+            currentUser.startDate = document.getElementById('start-date-input').value;
+            currentUser.duration = document.getElementById('duration-input').value;
+            const idx = users.findIndex(u => u.email === currentUser.email);
+            users[idx] = currentUser;
+            localStorage.setItem('internhub_users', JSON.stringify(users));
+            localStorage.setItem('internhub_session', JSON.stringify(currentUser));
+            refreshUI();
+        }
+
+        function refreshUI() {
+            const start = new Date(currentUser.startDate);
+            start.setHours(0,0,0,0);
+            const totalTargetDays = parseInt(currentUser.duration) || 1;
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            let elapsed = Math.floor((today - start) / 86400000);
+            if (elapsed < 0) elapsed = 0; 
+            let remaining = totalTargetDays - elapsed;
+            if (remaining < 0) remaining = 0;
+            const pct = Math.min(100, Math.round((elapsed / totalTargetDays) * 100));
+
+            document.getElementById('stat-logs').innerText = logs.length;
+            document.getElementById('stat-skills').innerText = skills.length;
+            document.getElementById('stat-days').innerText = remaining;
+            document.getElementById('stat-pct').innerText = pct + '%';
+            document.getElementById('tracker-bar').style.width = pct + '%';
+            
+            const tText = document.getElementById('tracker-text');
+            if (today < start) {
+                tText.innerHTML = `Mulai dalam ${Math.floor((start-today)/86400000)} hari lagi.`;
+            } else if (elapsed >= totalTargetDays) {
+                tText.innerHTML = `Selamat! Target ${totalTargetDays} hari tercapai! 🎉`;
+            } else {
+                tText.innerText = `Berjalan ${elapsed}/${totalTargetDays} hari. Sisa ${remaining} hari lagi!`;
+            }
+
+            renderLogs(); renderContacts(); renderSkills();
+        }
+
+        function renderLogs() {
+            document.getElementById('log-container').innerHTML = logs.map((l, i) => `
+                <div class="p-3 mb-3 border border-secondary border-opacity-10 rounded-4 glass-card">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-bold text-info small">${l.task}</span>
+                        <i class="bi bi-trash3 pointer text-danger opacity-50" onclick="deleteItem('log', ${i})"></i>
+                    </div>
+                    <div class="stat-badge mb-2" style="font-size:0.6rem">${l.date}</div>
+                    <p class="small mb-0 opacity-75">${l.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderContacts() {
+            document.getElementById('contact-container').innerHTML = contacts.map((c, i) => `
+                <div class="mb-2 p-2 rounded-3 bg-white bg-opacity-5 small d-flex justify-content-between align-items-center">
+                    <div><b>${c.name}</b><br><span class="text-secondary" style="font-size: 0.65rem;">${c.info}</span></div>
+                    <i class="bi bi-x-circle text-danger pointer" onclick="deleteItem('contact', ${i})"></i>
+                </div>
+            `).join('');
+        }
+
+        function renderSkills() {
+            document.getElementById('skill-container').innerHTML = skills.map((s, i) => `
+                <span class="badge-skill">${s} <i class="bi bi-x ms-2 pointer" onclick="deleteItem('skill', ${i})"></i></span>
+            `).join('');
+        }
+
+        function addLog() {
+            const task = document.getElementById('log-task').value;
+            const desc = document.getElementById('log-desc').value;
+            if (!task) return;
+            logs.unshift({ task, desc, date: new Date().toLocaleDateString('id-ID', {day:'numeric', month:'short', year:'numeric'}) });
+            save('logs', logs);
+            document.getElementById('log-task').value = ''; document.getElementById('log-desc').value = '';
+        }
+
+        function addContact() {
+            const name = document.getElementById('contact-name').value;
+            const info = document.getElementById('contact-info').value;
+            if (!name) return;
+            contacts.push({ name, info });
+            save('contacts', contacts);
+            document.getElementById('contact-name').value = ''; document.getElementById('contact-info').value = '';
+        }
+
+        function addSkill() {
+            const val = document.getElementById('skill-input').value;
+            if (!val) return;
+            skills.push(val);
+            save('skills', skills);
+            document.getElementById('skill-input').value = '';
+        }
+
+        function save(k, d) {
+            const key = currentUser.email.replace(/[@.]/g, '_');
+            localStorage.setItem(`${key}_${k}`, JSON.stringify(d));
+            refreshUI();
+        }
+
+        function deleteItem(type, i) {
+            if (confirm("Hapus data ini?")) {
+                if (type === 'log') logs.splice(i, 1), save('logs', logs);
+                else if (type === 'contact') contacts.splice(i, 1), save('contacts', contacts);
+                else if (type === 'skill') skills.splice(i, 1), save('skills', skills);
+            }
+        }
+
+        function exportData() {
+            let txt = `INTERNHUB REPORT: ${currentUser.name}\n\n`;
+            logs.forEach(l => txt += `[${l.date}] ${l.task}\nDetail: ${l.desc}\n\n`);
+            const blob = new Blob([txt], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `Logbook_Magang.txt`;
+            a.click();
+        }
+
+        function copyToClipboard() {
+            const txt = logs.map(l => `[${l.date}] ${l.task}: ${l.desc}`).join('\n');
+            navigator.clipboard.writeText(txt).then(() => alert("Berhasil disalin ke clipboard!"));
+        }
+    </script>
+</body>
+</html>
