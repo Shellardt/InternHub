@@ -14,6 +14,7 @@
             --accent-indigo: #6366F1;
             --accent-emerald: #10B981;
             --accent-premium: #F59E0B;
+            --accent-purple: #8B5CF6;
             --glass-bg: rgba(255, 255, 255, 0.03);
             --glass-border: rgba(255, 255, 255, 0.1);
         }
@@ -23,6 +24,11 @@
             background-color: var(--bg-dark);
             color: #F8FAFC;
             min-height: 100vh;
+        }
+
+        /* Premium body background */
+        body.premium-mode {
+            background: linear-gradient(135deg, #0F172A 0%, #1E1B4B 50%, #0F172A 100%);
         }
 
         .form-control {
@@ -50,31 +56,37 @@
             border: 1px solid var(--glass-border);
             border-radius: 24px;
             padding: 1.5rem;
+            transition: all 0.3s ease;
         }
 
-        .premium-card {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(139, 92, 246, 0.1));
+        /* Premium card styling */
+        .glass-card.premium-active {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(139, 92, 246, 0.15));
             border: 2px solid var(--accent-premium);
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
         }
 
-        .premium-card::before {
-            content: "PRO";
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--accent-premium);
-            color: #000;
+        .premium-badge {
+            background: linear-gradient(135deg, var(--accent-premium), var(--accent-purple));
+            color: white;
             font-size: 0.7rem;
             font-weight: bold;
-            padding: 2px 10px;
+            padding: 4px 12px;
             border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.8); }
         }
 
         .locked-feature {
             position: relative;
-            filter: blur(2px);
+            filter: blur(3px);
             pointer-events: none;
             user-select: none;
         }
@@ -85,14 +97,26 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px 20px;
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: bold;
             color: var(--accent-premium);
             z-index: 10;
             white-space: nowrap;
+            border: 2px solid var(--accent-premium);
+        }
+
+        /* Remove locked state when premium */
+        .unlocked-feature {
+            filter: none !important;
+            pointer-events: auto !important;
+            user-select: auto !important;
+        }
+
+        .unlocked-feature::after {
+            display: none !important;
         }
 
         .bento-grid {
@@ -209,25 +233,15 @@
             background: rgba(16, 185, 129, 0.1);
         }
 
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1050;
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-weight: 500;
-            animation: slideIn 0.3s ease;
+        /* Premium celebration animation */
+        @keyframes celebrate {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .premium-unlocked {
-            border: 2px solid var(--accent-premium);
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.3);
+        .premium-activated {
+            animation: celebrate 0.5s ease-out;
         }
     </style>
 </head>
@@ -236,16 +250,19 @@
     <!-- Navigation Bar -->
     <nav class="navbar navbar-dark pt-4 pb-4 section-hidden" id="main-nav">
         <div class="container">
-            <span class="navbar-brand fw-bold fs-4"><i class="bi bi-layers-half me-2"></i>InternHub</span>
+            <span class="navbar-brand fw-bold fs-4">
+                <i class="bi bi-layers-half me-2"></i>InternHub
+                <span id="nav-premium-indicator"></span>
+            </span>
             <div class="d-flex align-items-center gap-3">
                 <div class="text-end d-none d-md-block">
                     <div id="nav-user-name" class="fw-bold small d-flex align-items-center gap-2">
-                        <span id="user-display-name">User</span>
+                        <span>User</span>
                         <span id="user-tier-badge" class="badge bg-secondary">Free</span>
                     </div>
                     <div id="quote-display" class="text-secondary" style="font-size: 0.7rem;"></div>
                 </div>
-                <button class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="showPricing()">
+                <button class="btn btn-outline-info btn-sm rounded-pill px-3" onclick="showPricing()" id="upgrade-btn">
                     <i class="bi bi-gem me-1"></i>Upgrade
                 </button>
                 <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="logout()">Logout</button>
@@ -283,17 +300,34 @@
 
         <!-- Dashboard Section -->
         <section id="dashboard-section" class="section-hidden">
+            <!-- Premium Welcome Banner (only shown for premium users) -->
+            <div id="premium-banner" class="glass-card premium-active mb-4 section-hidden">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="fw-bold mb-1">
+                            <i class="bi bi-stars text-warning me-2"></i>Premium Account Active
+                        </h5>
+                        <p class="mb-0 small" id="subscription-info">Membership valid until ...</p>
+                    </div>
+                    <div class="premium-badge">
+                        <i class="bi bi-gem"></i> PRO
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-4 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="glass-card py-3">
+                    <div class="glass-card py-3" id="stat-logs-card">
                         <div class="stat-badge">Total Logs</div>
                         <h2 id="stat-logs" class="fw-bold mb-0">0</h2>
+                        <small id="log-limit-text" class="text-warning"></small>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="glass-card py-3">
+                    <div class="glass-card py-3" id="stat-skills-card">
                         <div class="stat-badge">Skills</div>
                         <h2 id="stat-skills" class="fw-bold mb-0">0</h2>
+                        <small id="skill-limit-text" class="text-warning"></small>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
@@ -326,7 +360,7 @@
                         <h6 class="fw-bold mb-0 text-white">Daily Logbook</h6>
                         <div>
                             <span class="badge bg-primary bg-opacity-25 text-info small pointer me-2" onclick="copyToClipboard()">Salin Semua</span>
-                            <span id="log-limit-badge" class="badge bg-warning text-dark small">0/∞ logs</span>
+                            <span id="log-limit-badge" class="badge bg-warning text-dark small">0/10</span>
                         </div>
                     </div>
                     <div class="mb-4">
@@ -338,21 +372,33 @@
                 </div>
 
                 <!-- Analytics (Premium) -->
-                <div class="glass-card premium-card" id="analytics-card">
+                <div class="glass-card locked-feature" id="analytics-card">
                     <h6 class="fw-bold mb-3 text-white"><i class="bi bi-graph-up me-2"></i>Advanced Analytics</h6>
-                    <div class="mb-3 text-center">
-                        <i class="bi bi-bar-chart display-4 text-warning mb-3"></i>
-                        <p class="small text-secondary">Analisis produktivitas harian dan rekomendasi perbaikan</p>
-                    </div>
-                    <div class="text-center" id="analytics-button-container">
-                        <button class="btn btn-premium btn-sm" onclick="showPricing()">
-                            <i class="bi bi-gem me-2"></i>Unlock Analytics
-                        </button>
+                    <div class="mb-3">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="small">Productivity Score</span>
+                                <span class="small fw-bold text-warning">87%</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-warning" style="width: 87%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="small">Weekly Growth</span>
+                                <span class="small fw-bold text-success">+12%</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: 75%"></div>
+                            </div>
+                        </div>
+                        <p class="small text-secondary mb-0">📈 Kinerja Anda meningkat!</p>
                     </div>
                 </div>
 
                 <!-- Work Directory -->
-                <div class="glass-card" id="work-directory-card">
+                <div class="glass-card" id="contacts-card">
                     <h6 class="fw-bold mb-3 text-white">Work Directory</h6>
                     <div class="mb-3">
                         <input type="text" id="contact-name" class="form-control form-control-sm mb-2" placeholder="Nama Orang">
@@ -363,7 +409,7 @@
                 </div>
 
                 <!-- Skills -->
-                <div class="glass-card" id="skill-card">
+                <div class="glass-card" id="skills-card">
                     <h6 class="fw-bold mb-2 text-white">Skill Learned</h6>
                     <div class="input-group mb-3">
                         <input type="text" id="skill-input" class="form-control form-control-sm" placeholder="Contoh: Excel Expert">
@@ -373,7 +419,7 @@
                 </div>
 
                 <!-- Export & Settings -->
-                <div class="glass-card bento-item-wide d-flex flex-wrap align-items-center justify-content-between gap-3" id="export-card">
+                <div class="glass-card bento-item-wide d-flex flex-wrap align-items-center justify-content-between gap-3" id="settings-card">
                     <div class="d-flex gap-4">
                         <div>
                             <label class="stat-badge d-block mb-1">Mulai Magang</label>
@@ -389,23 +435,31 @@
                         </div>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-success rounded-pill px-4 fw-bold" onclick="exportData()">Export .TXT</button>
-                        <button class="btn btn-premium rounded-pill px-4 fw-bold" onclick="showPricing()">
+                        <button class="btn btn-success rounded-pill px-4 fw-bold" onclick="exportData()">
+                            <i class="bi bi-download me-2"></i>Export
+                        </button>
+                        <button class="btn btn-premium rounded-pill px-4 fw-bold" onclick="showPricing()" id="upgrade-btn-2">
                             <i class="bi bi-gem me-2"></i>Upgrade
                         </button>
                     </div>
                 </div>
 
                 <!-- AI Coach (Premium) -->
-                <div class="glass-card premium-card" id="ai-coach-card">
+                <div class="glass-card locked-feature" id="ai-coach-card">
                     <h6 class="fw-bold mb-3 text-white"><i class="bi bi-robot me-2"></i>AI Career Coach</h6>
-                    <div id="ai-coach-content">
-                        <p class="small text-secondary mb-3">Dapatkan saran karir personal dari AI</p>
-                        <div class="text-center" id="ai-coach-button-container">
-                            <button class="btn btn-premium btn-sm" onclick="showPricing()">
-                                <i class="bi bi-gem me-2"></i>Unlock AI Coach
-                            </button>
-                        </div>
+                    <div class="mb-3">
+                        <select class="form-select form-select-sm mb-2" id="ai-topic">
+                            <option>Resume Review</option>
+                            <option>Interview Prep</option>
+                            <option>Career Path</option>
+                            <option>Skill Recommendations</option>
+                        </select>
+                        <button class="btn btn-premium btn-sm w-100" onclick="generateAIAdvice()">
+                            <i class="bi bi-magic me-2"></i>Get AI Advice
+                        </button>
+                    </div>
+                    <div id="ai-output" class="p-3 rounded-3 small" style="background: rgba(0,0,0,0.3); min-height: 80px;">
+                        <em class="text-secondary">AI akan memberikan saran karir personal...</em>
                     </div>
                 </div>
             </div>
@@ -437,60 +491,54 @@
                             <li><i class="bi bi-x-circle"></i> Analytics lanjutan</li>
                             <li><i class="bi bi-x-circle"></i> AI Career Coach</li>
                             <li><i class="bi bi-x-circle"></i> Export PDF & Excel</li>
-                            <li><i class="bi bi-x-circle"></i> Backup cloud</li>
-                            <li><i class="bi bi-x-circle"></i> Prioritas support</li>
                         </ul>
-                        <button class="btn btn-outline-light w-100 mt-4" onclick="selectPlan('free')">Paket Saat Ini</button>
+                        <button class="btn btn-outline-light w-100 mt-4" disabled>Paket Saat Ini</button>
                     </div>
                 </div>
 
                 <!-- Pro Monthly -->
                 <div class="col-md-4">
-                    <div class="premium-card pricing-card h-100">
+                    <div class="glass-card pricing-card h-100" style="border: 2px solid var(--accent-premium);">
                         <div class="text-center mb-4">
                             <span class="badge bg-warning text-dark mb-2">POPULER</span>
                             <h4 class="fw-bold">Pro Monthly</h4>
-                            <div class="display-4 fw-bold">Rp 49.000</div>
+                            <div class="display-4 fw-bold">Rp 49K</div>
                             <p class="text-secondary">/bulan</p>
                         </div>
                         <ul class="feature-list">
-                            <li><i class="bi bi-check-circle"></i> Logbook tanpa batas</li>
-                            <li><i class="bi bi-check-circle"></i> Kontak tanpa batas</li>
-                            <li><i class="bi bi-check-circle"></i> Skill tanpa batas</li>
+                            <li><i class="bi bi-check-circle"></i> Logbook unlimited</li>
+                            <li><i class="bi bi-check-circle"></i> Kontak unlimited</li>
+                            <li><i class="bi bi-check-circle"></i> Skill unlimited</li>
                             <li><i class="bi bi-check-circle"></i> Analytics lanjutan</li>
                             <li><i class="bi bi-check-circle"></i> AI Career Coach</li>
                             <li><i class="bi bi-check-circle"></i> Export PDF & Excel</li>
-                            <li><i class="bi bi-x-circle"></i> Backup cloud</li>
-                            <li><i class="bi bi-check-circle"></i> Prioritas support</li>
                         </ul>
-                        <button class="btn btn-premium w-100 mt-4" onclick="selectPlan('pro_monthly')">Upgrade Sekarang</button>
+                        <button class="btn btn-premium w-100 mt-4" onclick="selectPlan('pro_monthly')">Pilih Paket</button>
                     </div>
                 </div>
 
                 <!-- Pro Annual -->
                 <div class="col-md-4">
-                    <div class="premium-card pricing-card h-100">
+                    <div class="glass-card pricing-card h-100">
                         <div class="text-center mb-4">
                             <h4 class="fw-bold">Pro Annual</h4>
-                            <div class="display-4 fw-bold">Rp 450.000</div>
+                            <div class="display-4 fw-bold">Rp 450K</div>
                             <p class="text-secondary">/tahun <span class="text-success">(Hemat 23%)</span></p>
                         </div>
                         <ul class="feature-list">
                             <li><i class="bi bi-check-circle"></i> Semua fitur Pro Monthly</li>
-                            <li><i class="bi bi-check-circle"></i> Backup cloud otomatis</li>
-                            <li><i class="bi bi-check-circle"></i> Template logbook premium</li>
-                            <li><i class="bi bi-check-circle"></i> Sertifikat kelulusan</li>
+                            <li><i class="bi bi-check-circle"></i> Cloud backup otomatis</li>
+                            <li><i class="bi bi-check-circle"></i> Template premium</li>
                             <li><i class="bi bi-check-circle"></i> Portfolio builder</li>
-                            <li><i class="bi bi-check-circle"></i> Network sharing</li>
                             <li><i class="bi bi-check-circle"></i> Job matching</li>
-                            <li><i class="bi bi-check-circle"></i> 24/7 Priority support</li>
+                            <li><i class="bi bi-check-circle"></i> 24/7 Support</li>
                         </ul>
-                        <button class="btn btn-premium w-100 mt-4" onclick="selectPlan('pro_annual')">Pilih Paket Tahunan</button>
+                        <button class="btn btn-premium w-100 mt-4" onclick="selectPlan('pro_annual')">Pilih Paket</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Payment Methods -->
+            <!-- Payment Methods Info -->
             <div class="glass-card mt-5">
                 <h5 class="fw-bold mb-3">Pembayaran Aman & Mudah</h5>
                 <div class="row text-center">
@@ -518,14 +566,14 @@
         <section id="payment-section" class="section-hidden mx-auto" style="max-width: 500px;">
             <div class="glass-card">
                 <button class="btn btn-outline-light btn-sm mb-4" onclick="backToPricing()">
-                    <i class="bi bi-arrow-left me-2"></i>Kembali ke Paket
+                    <i class="bi bi-arrow-left me-2"></i>Kembali
                 </button>
                 <h4 class="fw-bold mb-4" id="selected-plan-title">Pro Monthly</h4>
                 
                 <!-- Payment Methods -->
                 <div class="mb-4">
                     <label class="form-label mb-3">Pilih Metode Pembayaran</label>
-                    <div class="payment-option" onclick="selectPaymentMethod('credit_card')">
+                    <div class="payment-option" data-method="credit_card" onclick="selectPaymentMethod('credit_card')">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-credit-card fs-4 me-3 text-info"></i>
                             <div>
@@ -535,29 +583,29 @@
                         </div>
                     </div>
                     
-                    <div class="payment-option" onclick="selectPaymentMethod('gopay')">
+                    <div class="payment-option" data-method="gopay" onclick="selectPaymentMethod('gopay')">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-wallet fs-4 me-3 text-success"></i>
                             <div>
                                 <h6 class="mb-0">GoPay</h6>
-                                <small class="text-secondary">Dompet digital Gojek</small>
+                                <small class="text-secondary">Dompet digital</small>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="payment-option" onclick="selectPaymentMethod('bank_transfer')">
+                    <div class="payment-option" data-method="bank" onclick="selectPaymentMethod('bank')">
                         <div class="d-flex align-items-center">
                             <i class="bi bi-bank fs-4 me-3 text-primary"></i>
                             <div>
                                 <h6 class="mb-0">Transfer Bank</h6>
-                                <small class="text-secondary">BCA, Mandiri, BRI, BNI</small>
+                                <small class="text-secondary">BCA, Mandiri, BRI</small>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Payment Details -->
-                <div class="mb-4">
+                <!-- Payment Summary -->
+                <div class="mb-4 p-3 rounded-3" style="background: rgba(255,255,255,0.05);">
                     <div class="d-flex justify-content-between mb-2">
                         <span>Harga Paket</span>
                         <span id="plan-price">Rp 49.000</span>
@@ -567,22 +615,21 @@
                         <span id="tax-amount">Rp 4.900</span>
                     </div>
                     <hr>
-                    <div class="d-flex justify-content-between fw-bold">
-                        <span>Total Pembayaran</span>
-                        <span id="total-price">Rp 53.900</span>
+                    <div class="d-flex justify-content-between fw-bold fs-5">
+                        <span>Total</span>
+                        <span id="total-price" class="text-warning">Rp 53.900</span>
                     </div>
                 </div>
 
-                <!-- Terms Agreement -->
+                <!-- Terms -->
                 <div class="form-check mb-4">
                     <input class="form-check-input" type="checkbox" id="terms-agree">
                     <label class="form-check-label small" for="terms-agree">
-                        Saya menyetujui <a href="#" class="text-info" onclick="showTerms()">Syarat & Ketentuan</a> dan 
-                        <a href="#" class="text-info" onclick="showPrivacy()">Kebijakan Privasi</a> InternHub
+                        Saya setuju dengan <a href="#" class="text-info">Syarat & Ketentuan</a>
                     </label>
                 </div>
 
-                <!-- Payment Button -->
+                <!-- Pay Button -->
                 <button class="btn btn-premium w-100 py-3" onclick="processPayment()">
                     <i class="bi bi-lock-fill me-2"></i>Bayar Sekarang
                 </button>
@@ -591,52 +638,32 @@
     </div>
 
     <script>
-        // Inisialisasi Data
+        // Data initialization
         let users = JSON.parse(localStorage.getItem('internhub_users')) || [];
         let currentUser = JSON.parse(localStorage.getItem('internhub_session')) || null;
         let logs = [], contacts = [], skills = [];
         let selectedPlan = null;
         let selectedPaymentMethod = 'credit_card';
 
-        // Batasan untuk user free
         const FREE_LIMITS = {
             logs: 10,
             contacts: 5,
             skills: 8
         };
 
-        // Harga paket
         const PRICING = {
-            free: { 
-                name: 'Free', 
-                price: 0, 
-                period: 'selamanya',
-                features: ['10 Logbook', '5 Kontak', '8 Skills']
-            },
-            pro_monthly: { 
-                name: 'Pro Monthly', 
-                price: 49000, 
-                period: 'bulan',
-                features: ['Logbook Unlimited', 'Kontak Unlimited', 'Skills Unlimited', 'Analytics', 'AI Coach', 'Export PDF/Excel']
-            },
-            pro_annual: { 
-                name: 'Pro Annual', 
-                price: 450000, 
-                period: 'tahun',
-                features: ['Semua fitur Pro', 'Cloud Backup', 'Portfolio Builder', 'Job Matching', 'Priority Support']
-            }
+            free: { name: 'Free', price: 0, period: 'forever' },
+            pro_monthly: { name: 'Pro Monthly', price: 49000, period: '30', duration_days: 30 },
+            pro_annual: { name: 'Pro Annual', price: 450000, period: '365', duration_days: 365 }
         };
 
-        // Quotes untuk motivasi
         const quotes = [
             "Make every day count.", 
             "Small steps, big results.", 
-            "Stay focused, stay humble.",
-            "Your internship journey matters.",
-            "Learn, grow, repeat."
+            "Stay focused, stay humble."
         ];
 
-        // Fungsi inisialisasi
+        // Initialize app
         window.onload = () => {
             if (currentUser) {
                 showDashboard();
@@ -644,27 +671,24 @@
             document.getElementById('quote-display').innerText = quotes[Math.floor(Math.random() * quotes.length)];
         };
 
-        // Toggle antara login dan register
         function toggleAuth(isLogin) {
             document.getElementById('login-form').classList.toggle('section-hidden', !isLogin);
             document.getElementById('register-form').classList.toggle('section-hidden', isLogin);
             document.getElementById('auth-title').innerText = isLogin ? 'Welcome Back!' : 'Join InternHub';
         }
 
-        // Fungsi register
         function register() {
             const name = document.getElementById('reg-name').value;
             const email = document.getElementById('reg-email').value;
             const pass = document.getElementById('reg-password').value;
             
             if (!name || !email || pass.length < 6) {
-                showToast("Harap isi semua data dengan benar! Password minimal 6 karakter.", "error");
+                alert("Harap isi semua data! Password minimal 6 karakter.");
                 return;
             }
             
-            // Cek apakah email sudah terdaftar
             if (users.find(u => u.email === email)) {
-                showToast("Email sudah terdaftar! Silakan login.", "error");
+                alert("Email sudah terdaftar!");
                 toggleAuth(true);
                 return;
             }
@@ -676,18 +700,15 @@
                 startDate: new Date().toISOString().split('T')[0], 
                 duration: 90,
                 tier: 'free',
-                subscription: null,
-                payment_history: [],
-                created_at: new Date().toISOString()
+                subscription: null
             };
             
             users.push(newUser);
             localStorage.setItem('internhub_users', JSON.stringify(users));
-            showToast("Registrasi berhasil! Silakan login.", "success");
+            alert("✅ Registrasi berhasil! Silakan login.");
             toggleAuth(true);
         }
 
-        // Fungsi login
         function login() {
             const email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-password').value;
@@ -698,168 +719,141 @@
                 localStorage.setItem('internhub_session', JSON.stringify(user));
                 showDashboard();
             } else {
-                showToast("Email atau Password salah!", "error");
+                alert("❌ Email atau Password salah!");
             }
         }
 
-        // Fungsi logout
         function logout() { 
             localStorage.removeItem('internhub_session'); 
             location.reload(); 
         }
 
-        // Tampilkan dashboard
         function showDashboard() {
+            // Hide all sections
             document.getElementById('auth-section').classList.add('section-hidden');
             document.getElementById('pricing-section').classList.add('section-hidden');
             document.getElementById('payment-section').classList.add('section-hidden');
+            
+            // Show dashboard
             document.getElementById('main-nav').classList.remove('section-hidden');
             document.getElementById('dashboard-section').classList.remove('section-hidden');
             
-            // Update navbar
-            document.getElementById('user-display-name').textContent = currentUser.name;
+            // Check if premium
+            const isPremium = checkPremiumStatus();
             
-            // Load data user
+            // Update UI based on tier
+            updatePremiumUI(isPremium);
+            
+            // Update navbar
+            const tierBadge = isPremium ? 
+                '<span class="premium-badge"><i class="bi bi-gem"></i> PRO</span>' : 
+                '<span class="badge bg-secondary">Free</span>';
+            
+            document.getElementById('nav-user-name').innerHTML = `
+                <span>${currentUser.name}</span>
+                ${tierBadge}
+            `;
+            
+            // Load user data
             const key = currentUser.email.replace(/[@.]/g, '_');
             logs = JSON.parse(localStorage.getItem(`${key}_logs`)) || [];
             contacts = JSON.parse(localStorage.getItem(`${key}_contacts`)) || [];
             skills = JSON.parse(localStorage.getItem(`${key}_skills`)) || [];
             
-            // Set initial values
             document.getElementById('start-date-input').value = currentUser.startDate;
             document.getElementById('duration-input').value = currentUser.duration;
+            document.getElementById('user-tier').innerText = isPremium ? 'Premium' : 'Free';
             
             refreshUI();
-            updateTierUI();
         }
 
-        // Update UI berdasarkan tier
-        function updateTierUI() {
-            const isPremium = currentUser.tier !== 'free';
+        function checkPremiumStatus() {
+            if (!currentUser.subscription) return false;
             
-            // Update badge tier
-            const tierBadge = document.getElementById('user-tier-badge');
-            const userTierDisplay = document.getElementById('user-tier');
+            const endDate = new Date(currentUser.subscription.end_date);
+            const now = new Date();
             
+            if (now > endDate) {
+                // Subscription expired
+                currentUser.tier = 'free';
+                currentUser.subscription = null;
+                updateUserData();
+                return false;
+            }
+            
+            return true;
+        }
+
+        function updatePremiumUI(isPremium) {
+            // Apply premium mode to body
             if (isPremium) {
-                tierBadge.className = 'badge bg-warning';
-                tierBadge.textContent = 'Premium';
-                userTierDisplay.textContent = 'Premium';
-                userTierDisplay.className = 'fw-bold text-warning';
+                document.body.classList.add('premium-mode');
                 
-                // Update log limit badge untuk premium
-                document.getElementById('log-limit-badge').textContent = `${logs.length}/∞ logs`;
-                document.getElementById('log-limit-badge').className = 'badge bg-success text-dark small';
+                // Show premium banner
+                const banner = document.getElementById('premium-banner');
+                banner.classList.remove('section-hidden');
+                
+                if (currentUser.subscription) {
+                    const endDate = new Date(currentUser.subscription.end_date);
+                    document.getElementById('subscription-info').textContent = 
+                        `Active until ${endDate.toLocaleDateString('id-ID')}`;
+                }
+                
+                // Add premium glow to cards
+                ['progress-card', 'logbook-card', 'stat-logs-card', 'stat-skills-card'].forEach(id => {
+                    const card = document.getElementById(id);
+                    if (card) card.classList.add('premium-active');
+                });
                 
                 // Unlock premium features
                 unlockPremiumFeatures();
                 
-            } else {
-                tierBadge.className = 'badge bg-secondary';
-                tierBadge.textContent = 'Free';
-                userTierDisplay.textContent = 'Free';
-                userTierDisplay.className = 'fw-bold text-secondary';
+                // Hide upgrade buttons
+                document.getElementById('upgrade-btn').classList.add('section-hidden');
+                document.getElementById('upgrade-btn-2').classList.add('section-hidden');
                 
-                // Update log limit badge untuk free
-                document.getElementById('log-limit-badge').textContent = `${logs.length}/${FREE_LIMITS.logs} logs`;
-                document.getElementById('log-limit-badge').className = `badge ${logs.length >= FREE_LIMITS.logs ? 'bg-danger' : 'bg-warning'} text-dark small`;
+                // Show premium indicator in nav
+                document.getElementById('nav-premium-indicator').innerHTML = 
+                    '<span class="premium-badge ms-2"><i class="bi bi-stars"></i></span>';
+                
+            } else {
+                document.body.classList.remove('premium-mode');
+                document.getElementById('premium-banner').classList.add('section-hidden');
                 
                 // Lock premium features
                 lockPremiumFeatures();
+                
+                // Show upgrade buttons
+                document.getElementById('upgrade-btn').classList.remove('section-hidden');
+                document.getElementById('upgrade-btn-2').classList.remove('section-hidden');
+                
+                document.getElementById('nav-premium-indicator').innerHTML = '';
             }
         }
 
-        // Unlock semua fitur premium
         function unlockPremiumFeatures() {
-            // Analytics Card
-            const analyticsCard = document.getElementById('analytics-card');
-            analyticsCard.classList.remove('locked-feature');
-            analyticsCard.classList.add('premium-unlocked');
-            
-            // Update analytics button
-            const analyticsButtonContainer = document.getElementById('analytics-button-container');
-            analyticsButtonContainer.innerHTML = `
-                <button class="btn btn-success btn-sm">
-                    <i class="bi bi-unlock me-2"></i>Analytics Active
-                </button>
-                <div class="mt-3">
-                    <canvas id="productivityChart" width="200" height="100"></canvas>
-                </div>
-            `;
-            
-            // AI Coach Card
-            const aiCoachCard = document.getElementById('ai-coach-card');
-            aiCoachCard.classList.remove('locked-feature');
-            aiCoachCard.classList.add('premium-unlocked');
-            
-            // Update AI Coach content
-            const aiCoachContent = document.getElementById('ai-coach-content');
-            aiCoachContent.innerHTML = `
-                <div class="mb-3">
-                    <p class="small text-success mb-2"><i class="bi bi-check-circle me-1"></i> AI Coach Active</p>
-                    <input type="text" class="form-control form-control-sm mb-2" placeholder="Tanyakan pada AI coach...">
-                    <button class="btn btn-sm btn-outline-info w-100">Dapatkan Saran</button>
-                </div>
-                <div class="text-center">
-                    <small class="text-secondary">Powered by AI Assistant</small>
-                </div>
-            `;
-            
-            // Update upgrade button menjadi manage subscription
-            const upgradeButtons = document.querySelectorAll('button[onclick="showPricing()"]');
-            upgradeButtons.forEach(btn => {
-                if (btn.textContent.includes('Upgrade')) {
-                    btn.innerHTML = '<i class="bi bi-gear me-2"></i>Manage';
-                    btn.onclick = () => showSubscriptionDetails();
+            // Unlock analytics and AI coach
+            const premiumCards = ['analytics-card', 'ai-coach-card'];
+            premiumCards.forEach(id => {
+                const card = document.getElementById(id);
+                if (card) {
+                    card.classList.remove('locked-feature');
+                    card.classList.add('unlocked-feature', 'premium-activated');
                 }
             });
         }
 
-        // Lock fitur premium
         function lockPremiumFeatures() {
-            // Analytics Card
-            const analyticsCard = document.getElementById('analytics-card');
-            analyticsCard.classList.add('locked-feature');
-            analyticsCard.classList.remove('premium-unlocked');
-            
-            // Reset analytics button
-            const analyticsButtonContainer = document.getElementById('analytics-button-container');
-            analyticsButtonContainer.innerHTML = `
-                <button class="btn btn-premium btn-sm" onclick="showPricing()">
-                    <i class="bi bi-gem me-2"></i>Unlock Analytics
-                </button>
-            `;
-            
-            // AI Coach Card
-            const aiCoachCard = document.getElementById('ai-coach-card');
-            aiCoachCard.classList.add('locked-feature');
-            aiCoachCard.classList.remove('premium-unlocked');
-            
-            // Reset AI Coach content
-            const aiCoachContent = document.getElementById('ai-coach-content');
-            aiCoachContent.innerHTML = `
-                <p class="small text-secondary mb-3">Dapatkan saran karir personal dari AI</p>
-                <div class="text-center" id="ai-coach-button-container">
-                    <button class="btn btn-premium btn-sm" onclick="showPricing()">
-                        <i class="bi bi-gem me-2"></i>Unlock AI Coach
-                    </button>
-                </div>
-            `;
+            const premiumCards = ['analytics-card', 'ai-coach-card'];
+            premiumCards.forEach(id => {
+                const card = document.getElementById(id);
+                if (card) {
+                    card.classList.add('locked-feature');
+                    card.classList.remove('unlocked-feature', 'premium-activated');
+                }
+            });
         }
 
-        // Show subscription details
-        function showSubscriptionDetails() {
-            if (currentUser.subscription) {
-                const sub = currentUser.subscription;
-                const endDate = new Date(sub.end_date).toLocaleDateString('id-ID');
-                alert(`Detail Langganan:\n\nPaket: ${sub.plan}\nBerlaku sampai: ${endDate}\nMetode Pembayaran: ${sub.payment_method}\nID Transaksi: ${sub.payment_id}`);
-            } else {
-                showToast("Anda belum memiliki langganan aktif.", "info");
-                showPricing();
-            }
-        }
-
-        // Refresh UI
         function refreshUI() {
             const start = new Date(currentUser.startDate);
             start.setHours(0,0,0,0);
@@ -868,109 +862,110 @@
             today.setHours(0,0,0,0);
 
             let elapsed = Math.floor((today - start) / 86400000);
-            if (elapsed < 0) elapsed = 0; 
+            if (elapsed < 0) elapsed = 0;
             let remaining = totalTargetDays - elapsed;
             if (remaining < 0) remaining = 0;
             const pct = Math.min(100, Math.round((elapsed / totalTargetDays) * 100));
 
-            // Update statistics
             document.getElementById('stat-logs').innerText = logs.length;
             document.getElementById('stat-skills').innerText = skills.length;
             document.getElementById('stat-days').innerText = remaining;
             document.getElementById('stat-pct').innerText = pct + '%';
             document.getElementById('tracker-bar').style.width = pct + '%';
             
-            // Update progress text
+            const isPremium = currentUser.tier !== 'free' && currentUser.subscription;
+            
+            // Update limit badges
+            if (!isPremium) {
+                document.getElementById('log-limit-badge').textContent = `${logs.length}/${FREE_LIMITS.logs}`;
+                document.getElementById('log-limit-text').textContent = `(Max ${FREE_LIMITS.logs})`;
+                document.getElementById('skill-limit-text').textContent = `(Max ${FREE_LIMITS.skills})`;
+            } else {
+                document.getElementById('log-limit-badge').textContent = `${logs.length}/∞`;
+                document.getElementById('log-limit-badge').className = 'badge bg-success text-white small';
+                document.getElementById('log-limit-text').textContent = '(Unlimited)';
+                document.getElementById('skill-limit-text').textContent = '(Unlimited)';
+            }
+            
             const tText = document.getElementById('tracker-text');
             if (today < start) {
-                tText.innerHTML = `Mulai dalam ${Math.floor((start-today)/86400000)} hari lagi.`;
+                tText.innerHTML = `Mulai dalam ${Math.floor((start-today)/86400000)} hari`;
             } else if (elapsed >= totalTargetDays) {
-                tText.innerHTML = `Selamat! Target ${totalTargetDays} hari tercapai! 🎉`;
+                tText.innerHTML = `🎉 Target tercapai!`;
             } else {
-                tText.innerText = `Berjalan ${elapsed}/${totalTargetDays} hari. Sisa ${remaining} hari lagi!`;
+                tText.innerText = `${elapsed}/${totalTargetDays} hari • ${remaining} hari tersisa`;
             }
 
-            renderLogs(); 
-            renderContacts(); 
+            renderLogs();
+            renderContacts();
             renderSkills();
-            updateTierUI();
         }
 
-        // Render logs
         function renderLogs() {
-            const logContainer = document.getElementById('log-container');
+            const container = document.getElementById('log-container');
             if (logs.length === 0) {
-                logContainer.innerHTML = `
-                    <div class="text-center py-5 text-secondary">
-                        <i class="bi bi-journal-check display-4 mb-3"></i>
-                        <p>Belum ada logbook. Mulai tambahkan aktivitas harian Anda!</p>
+                container.innerHTML = `
+                    <div class="text-center py-4 text-secondary">
+                        <i class="bi bi-journal-check display-4 mb-2"></i>
+                        <p class="small">Belum ada logbook</p>
                     </div>
                 `;
                 return;
             }
 
-            logContainer.innerHTML = logs.map((l, i) => `
-                <div class="p-3 mb-3 border border-secondary border-opacity-10 rounded-4 glass-card">
+            container.innerHTML = logs.map((l, i) => `
+                <div class="p-3 mb-2 border border-secondary border-opacity-10 rounded-4 glass-card">
                     <div class="d-flex justify-content-between">
                         <span class="fw-bold text-info small">${l.task}</span>
                         <i class="bi bi-trash3 pointer text-danger opacity-50" onclick="deleteItem('log', ${i})"></i>
                     </div>
-                    <div class="stat-badge mb-2" style="font-size:0.6rem">${l.date}</div>
+                    <div class="stat-badge mb-1" style="font-size:0.6rem">${l.date}</div>
                     <p class="small mb-0 opacity-75">${l.desc}</p>
                 </div>
             `).join('');
         }
 
-        // Render contacts
         function renderContacts() {
-            const contactContainer = document.getElementById('contact-container');
+            const container = document.getElementById('contact-container');
             if (contacts.length === 0) {
-                contactContainer.innerHTML = `
-                    <div class="text-center py-3 text-secondary small">
-                        <i class="bi bi-person-plus"></i> Tambahkan kontak kerja Anda
-                    </div>
-                `;
+                container.innerHTML = '<div class="text-center py-3 text-secondary small">Belum ada kontak</div>';
                 return;
             }
 
-            contactContainer.innerHTML = contacts.map((c, i) => `
+            container.innerHTML = contacts.map((c, i) => `
                 <div class="mb-2 p-2 rounded-3 bg-white bg-opacity-5 small d-flex justify-content-between align-items-center">
-                    <div><b>${c.name}</b><br><span class="text-secondary" style="font-size: 0.65rem;">${c.info}</span></div>
+                    <div><b>${c.name}</b><br><span class="text-secondary" style="font-size:0.65rem;">${c.info}</span></div>
                     <i class="bi bi-x-circle text-danger pointer" onclick="deleteItem('contact', ${i})"></i>
                 </div>
             `).join('');
         }
 
-        // Render skills
         function renderSkills() {
-            const skillContainer = document.getElementById('skill-container');
+            const container = document.getElementById('skill-container');
             if (skills.length === 0) {
-                skillContainer.innerHTML = `
-                    <div class="text-center py-3 text-secondary small">
-                        <i class="bi bi-lightbulb"></i> Tambahkan skill yang dipelajari
-                    </div>
-                `;
+                container.innerHTML = '<div class="text-center py-3 text-secondary small">Belum ada skill</div>';
                 return;
             }
 
-            skillContainer.innerHTML = skills.map((s, i) => `
+            container.innerHTML = skills.map((s, i) => `
                 <span class="badge-skill">${s} <i class="bi bi-x ms-2 pointer" onclick="deleteItem('skill', ${i})"></i></span>
             `).join('');
         }
 
-        // Tambah log
         function addLog() {
-            if (currentUser.tier === 'free' && logs.length >= FREE_LIMITS.logs) {
-                showToast(`Batas logbook untuk akun Free hanya ${FREE_LIMITS.logs}. Upgrade ke Premium!`, "warning");
+            const isPremium = currentUser.tier !== 'free' && currentUser.subscription;
+            
+            if (!isPremium && logs.length >= FREE_LIMITS.logs) {
+                alert(`⚠️ Limit ${FREE_LIMITS.logs} logbook tercapai! Upgrade ke Premium untuk unlimited.`);
                 showPricing();
                 return;
             }
 
-            const task = document.getElementById('log-task').value;
-            const desc = document.getElementById('log-desc').value;
+            const task = document.getElementById('log-task').value.trim();
+            const desc = document.getElementById('log-desc').value.trim();
             
-            if (!task.trim()) {
-                showToast("Judul tugas tidak boleh kosong!", "error");
+            if (!task) {
+                alert("Judul tugas tidak boleh kosong!");
                 return;
             }
             
@@ -983,23 +978,22 @@
             save('logs', logs);
             document.getElementById('log-task').value = '';
             document.getElementById('log-desc').value = '';
-            
-            showToast('Logbook berhasil disimpan!', 'success');
         }
 
-        // Tambah kontak
         function addContact() {
-            if (currentUser.tier === 'free' && contacts.length >= FREE_LIMITS.contacts) {
-                showToast(`Batas kontak untuk akun Free hanya ${FREE_LIMITS.contacts}. Upgrade ke Premium!`, "warning");
+            const isPremium = currentUser.tier !== 'free' && currentUser.subscription;
+            
+            if (!isPremium && contacts.length >= FREE_LIMITS.contacts) {
+                alert(`⚠️ Limit ${FREE_LIMITS.contacts} kontak tercapai! Upgrade ke Premium.`);
                 showPricing();
                 return;
             }
 
-            const name = document.getElementById('contact-name').value;
-            const info = document.getElementById('contact-info').value;
+            const name = document.getElementById('contact-name').value.trim();
+            const info = document.getElementById('contact-info').value.trim();
             
-            if (!name.trim()) {
-                showToast("Nama kontak tidak boleh kosong!", "error");
+            if (!name) {
+                alert("Nama tidak boleh kosong!");
                 return;
             }
             
@@ -1007,14 +1001,13 @@
             save('contacts', contacts);
             document.getElementById('contact-name').value = '';
             document.getElementById('contact-info').value = '';
-            
-            showToast('Kontak berhasil ditambahkan!', 'success');
         }
 
-        // Tambah skill
         function addSkill() {
-            if (currentUser.tier === 'free' && skills.length >= FREE_LIMITS.skills) {
-                showToast(`Batas skill untuk akun Free hanya ${FREE_LIMITS.skills}. Upgrade ke Premium!`, "warning");
+            const isPremium = currentUser.tier !== 'free' && currentUser.subscription;
+            
+            if (!isPremium && skills.length >= FREE_LIMITS.skills) {
+                alert(`⚠️ Limit ${FREE_LIMITS.skills} skill tercapai! Upgrade ke Premium.`);
                 showPricing();
                 return;
             }
@@ -1022,100 +1015,83 @@
             const val = document.getElementById('skill-input').value.trim();
             
             if (!val) {
-                showToast("Nama skill tidak boleh kosong!", "error");
+                alert("Skill tidak boleh kosong!");
                 return;
             }
             
             skills.push(val);
             save('skills', skills);
             document.getElementById('skill-input').value = '';
-            
-            showToast('Skill berhasil ditambahkan!', 'success');
         }
 
-        // Save data ke localStorage
+        function generateAIAdvice() {
+            const topic = document.getElementById('ai-topic').value;
+            const output = document.getElementById('ai-output');
+            
+            output.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Generating AI advice...';
+            
+            setTimeout(() => {
+                const advice = {
+                    'Resume Review': '✨ Resume Anda solid! Tambahkan metrics konkret di setiap achievement. Contoh: "Meningkatkan efisiensi proses 30%"',
+                    'Interview Prep': '💼 Tips: Siapkan STAR method untuk behavioral questions. Practice dengan teman, record yourself!',
+                    'Career Path': '🎯 Based on your skills, consider: Product Manager, Business Analyst, atau Project Coordinator roles.',
+                    'Skill Recommendations': '📚 Top skills to learn: Data Analysis (Excel/Python), Agile/Scrum, SQL basics, Presentation skills'
+                };
+                
+                output.innerHTML = advice[topic] || 'Great job on your internship journey! Keep learning and growing.';
+            }, 1500);
+        }
+
         function save(k, d) {
             const key = currentUser.email.replace(/[@.]/g, '_');
             localStorage.setItem(`${key}_${k}`, JSON.stringify(d));
             refreshUI();
         }
 
-        // Hapus item
         function deleteItem(type, i) {
-            if (!confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+            if (!confirm("Hapus data ini?")) return;
             
-            if (type === 'log') {
-                logs.splice(i, 1);
-                save('logs', logs);
-            } else if (type === 'contact') {
-                contacts.splice(i, 1);
-                save('contacts', contacts);
-            } else if (type === 'skill') {
-                skills.splice(i, 1);
-                save('skills', skills);
-            }
-            
-            showToast('Data berhasil dihapus!', 'info');
+            if (type === 'log') logs.splice(i, 1), save('logs', logs);
+            else if (type === 'contact') contacts.splice(i, 1), save('contacts', contacts);
+            else if (type === 'skill') skills.splice(i, 1), save('skills', skills);
         }
 
-        // Export data
         function exportData() {
-            let txt = `INTERNHUB REPORT: ${currentUser.name}\n`;
-            txt += `Tanggal: ${new Date().toLocaleDateString('id-ID')}\n`;
-            txt += `Tier: ${currentUser.tier}\n`;
-            txt += `Progress: ${document.getElementById('stat-pct').innerText}\n\n`;
+            let txt = `INTERNHUB REPORT - ${currentUser.name}\n`;
+            txt += `${'='.repeat(50)}\n\n`;
             
-            txt += `LOGBOOK HARIAN:\n${'='.repeat(40)}\n`;
             logs.forEach((l, i) => {
-                txt += `\n[${i+1}] ${l.date} - ${l.task}\n`;
-                txt += `   ${l.desc}\n`;
+                txt += `[${l.date}] ${l.task}\n${l.desc}\n\n`;
             });
             
-            txt += `\n\nKONTAK KERJA:\n${'='.repeat(40)}\n`;
-            contacts.forEach(c => {
-                txt += `\n${c.name}\n`;
-                txt += `   ${c.info}\n`;
-            });
-            
-            txt += `\n\nSKILL YANG DIPELAJARI:\n${'='.repeat(40)}\n`;
-            skills.forEach((s, i) => {
-                txt += `${i+1}. ${s}\n`;
-            });
-            
-            const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+            const blob = new Blob([txt], { type: 'text/plain' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = `InternHub_Report_${currentUser.name}_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = `InternHub_${currentUser.name}_${Date.now()}.txt`;
             a.click();
-            
-            showToast('Data berhasil diexport!', 'success');
         }
 
-        // Copy to clipboard
         function copyToClipboard() {
             const txt = logs.map(l => `[${l.date}] ${l.task}: ${l.desc}`).join('\n');
-            navigator.clipboard.writeText(txt).then(() => {
-                showToast('Logbook berhasil disalin ke clipboard!', 'success');
-            });
+            navigator.clipboard.writeText(txt).then(() => alert("✅ Copied!"));
         }
 
-        // Update profile
         function updateProfile() {
             currentUser.startDate = document.getElementById('start-date-input').value;
             currentUser.duration = document.getElementById('duration-input').value;
-            
+            updateUserData();
+            refreshUI();
+        }
+
+        function updateUserData() {
             const idx = users.findIndex(u => u.email === currentUser.email);
             if (idx !== -1) {
                 users[idx] = currentUser;
                 localStorage.setItem('internhub_users', JSON.stringify(users));
                 localStorage.setItem('internhub_session', JSON.stringify(currentUser));
             }
-            
-            refreshUI();
-            showToast('Profile berhasil diupdate!', 'success');
         }
 
-        // Show pricing section
         function showPricing() {
             document.getElementById('auth-section').classList.add('section-hidden');
             document.getElementById('dashboard-section').classList.add('section-hidden');
@@ -1124,26 +1100,11 @@
             document.getElementById('pricing-section').classList.remove('section-hidden');
         }
 
-        // Select plan
         function selectPlan(plan) {
-            if (plan === 'free') {
-                if (currentUser.tier === 'free') {
-                    showToast('Anda sudah menggunakan paket Free', 'info');
-                } else {
-                    showToast('Downgrade ke Free berhasil', 'info');
-                    currentUser.tier = 'free';
-                    currentUser.subscription = null;
-                    saveUserData();
-                    backToDashboard();
-                }
-                return;
-            }
-            
             selectedPlan = plan;
             document.getElementById('pricing-section').classList.add('section-hidden');
             document.getElementById('payment-section').classList.remove('section-hidden');
             
-            // Update payment details
             const planData = PRICING[plan];
             const price = planData.price;
             const tax = Math.round(price * 0.1);
@@ -1154,140 +1115,60 @@
             document.getElementById('tax-amount').textContent = `Rp ${tax.toLocaleString('id-ID')}`;
             document.getElementById('total-price').textContent = `Rp ${total.toLocaleString('id-ID')}`;
             
-            // Reset payment method selection
-            selectPaymentMethod('credit_card');
+            // Reset selection
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector('[data-method="credit_card"]').classList.add('selected');
         }
 
-        // Select payment method
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
-            
-            // Remove all selected classes
-            document.querySelectorAll('.payment-option').forEach(opt => {
-                opt.classList.remove('selected');
-            });
-            
-            // Add selected class to clicked option
-            event.currentTarget.classList.add('selected');
+            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+            document.querySelector(`[data-method="${method}"]`).classList.add('selected');
         }
 
-        // Process payment
         function processPayment() {
             if (!document.getElementById('terms-agree').checked) {
-                showToast('Anda harus menyetujui Syarat & Ketentuan terlebih dahulu!', 'error');
+                alert('Setujui Syarat & Ketentuan terlebih dahulu!');
                 return;
             }
             
             if (!selectedPlan) {
-                showToast('Silakan pilih paket terlebih dahulu!', 'error');
+                alert('Pilih paket terlebih dahulu!');
                 return;
             }
             
-            // Simulasikan proses pembayaran
             const planData = PRICING[selectedPlan];
             const paymentId = 'PAY-' + Math.random().toString(36).substr(2, 9).toUpperCase();
             
-            // Update user data
-            currentUser.tier = selectedPlan;
+            // Calculate end date
+            const endDate = new Date();
+            endDate.setDate(endDate.getDate() + planData.duration_days);
+            
+            // Update user to premium
+            currentUser.tier = 'premium';
             currentUser.subscription = {
                 plan: selectedPlan,
                 start_date: new Date().toISOString(),
-                end_date: selectedPlan === 'pro_annual' 
-                    ? new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString()
-                    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+                end_date: endDate.toISOString(),
                 payment_method: selectedPaymentMethod,
                 payment_id: paymentId
             };
             
-            if (!currentUser.payment_history) {
-                currentUser.payment_history = [];
-            }
+            updateUserData();
             
-            currentUser.payment_history.push({
-                date: new Date().toISOString(),
-                amount: planData.price,
-                plan: selectedPlan,
-                payment_id: paymentId
-            });
+            // Success message
+            alert(`🎉 UPGRADE BERHASIL!\n\nPaket: ${planData.name}\nID: ${paymentId}\n\nSelamat menikmati fitur Premium!`);
             
-            // Save user data
-            saveUserData();
-            
-            // Show success message
-            showToast(`🎉 Pembayaran berhasil! Paket ${planData.name} telah aktif.`, 'success');
-            
-            // Back to dashboard
-            setTimeout(() => {
-                backToDashboard();
-            }, 1500);
+            // Back to dashboard with premium UI
+            backToDashboard();
         }
 
-        // Save user data
-        function saveUserData() {
-            const idx = users.findIndex(u => u.email === currentUser.email);
-            if (idx !== -1) {
-                users[idx] = currentUser;
-                localStorage.setItem('internhub_users', JSON.stringify(users));
-                localStorage.setItem('internhub_session', JSON.stringify(currentUser));
-            }
-        }
-
-        // Back to dashboard
         function backToDashboard() {
             showDashboard();
         }
 
-        // Back to pricing
         function backToPricing() {
             showPricing();
-        }
-
-        // Show terms
-        function showTerms() {
-            alert('Syarat & Ketentuan:\n\n1. Layanan ini untuk tujuan magang/pelatihan\n2. Data pengguna disimpan di browser lokal\n3. Pembayaran tidak dapat dikembalikan\n4. Pengguna bertanggung jawab atas data yang dimasukkan\n\nHubungi: support@internhub.com');
-        }
-
-        // Show privacy
-        function showPrivacy() {
-            alert('Kebijakan Privasi:\n\n1. Data disimpan di browser lokal pengguna\n2. Tidak ada data yang dikirim ke server\n3. Pengguna memiliki kontrol penuh atas datanya\n4. Data dapat diexport kapan saja\n\nPrivasi Anda adalah prioritas kami.');
-        }
-
-        // Toast notification
-        function showToast(message, type) {
-            // Remove existing toast
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) existingToast.remove();
-            
-            // Create toast element
-            const toast = document.createElement('div');
-            toast.className = `toast ${
-                type === 'success' ? 'bg-success' : 
-                type === 'error' ? 'bg-danger' : 
-                type === 'warning' ? 'bg-warning' : 
-                'bg-info'
-            }`;
-            
-            toast.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-${
-                        type === 'success' ? 'check-circle' : 
-                        type === 'error' ? 'exclamation-circle' : 
-                        type === 'warning' ? 'exclamation-triangle' : 
-                        'info-circle'
-                    } me-2"></i>
-                    <span>${message}</span>
-                </div>
-            `;
-            
-            // Add to body
-            document.body.appendChild(toast);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transition = 'opacity 0.3s';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
         }
     </script>
 </body>
