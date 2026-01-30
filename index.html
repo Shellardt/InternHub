@@ -243,6 +243,45 @@
         .premium-activated {
             animation: celebrate 0.5s ease-out;
         }
+
+        /* Style untuk kontak yang diperbaiki */
+        .contact-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--accent-indigo);
+            transition: all 0.3s ease;
+        }
+
+        .contact-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateX(5px);
+        }
+
+        .contact-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #E2E8F0;
+            margin-bottom: 2px;
+        }
+
+        .contact-info {
+            font-size: 0.75rem;
+            color: #94A3B8;
+        }
+
+        .contact-empty {
+            text-align: center;
+            padding: 20px;
+            color: #64748B;
+        }
+
+        .contact-empty i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -397,13 +436,20 @@
                     </div>
                 </div>
 
-                <!-- Work Directory -->
+                <!-- Work Directory - BAGIAN YANG DIPERBAIKI -->
                 <div class="glass-card" id="contacts-card">
-                    <h6 class="fw-bold mb-3 text-white">Work Directory</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0 text-white">
+                            <i class="bi bi-person-lines-fill me-2"></i>Work Directory
+                        </h6>
+                        <span id="contact-limit-badge" class="badge bg-warning text-dark small">0/5</span>
+                    </div>
                     <div class="mb-3">
-                        <input type="text" id="contact-name" class="form-control form-control-sm mb-2" placeholder="Nama Orang">
-                        <input type="text" id="contact-info" class="form-control form-control-sm mb-2" placeholder="Jabatan/Kontak">
-                        <button class="btn btn-outline-light btn-sm w-100 rounded-pill" onclick="addContact()">Tambah</button>
+                        <input type="text" id="contact-name" class="form-control form-control-sm mb-2" placeholder="Nama Orang (contoh: Budi Santoso)">
+                        <input type="text" id="contact-info" class="form-control form-control-sm mb-2" placeholder="Jabatan/Kontak (contoh: Mentor Magang)">
+                        <button class="btn btn-indigo btn-sm w-100 rounded-pill" onclick="addContact()">
+                            <i class="bi bi-person-plus me-1"></i>Tambah Kontak
+                        </button>
                     </div>
                     <div id="contact-container" class="overflow-auto" style="max-height: 150px;"></div>
                 </div>
@@ -880,11 +926,16 @@
                 document.getElementById('log-limit-badge').textContent = `${logs.length}/${FREE_LIMITS.logs}`;
                 document.getElementById('log-limit-text').textContent = `(Max ${FREE_LIMITS.logs})`;
                 document.getElementById('skill-limit-text').textContent = `(Max ${FREE_LIMITS.skills})`;
+                document.getElementById('contact-limit-badge').textContent = `${contacts.length}/${FREE_LIMITS.contacts}`;
+                document.getElementById('contact-limit-badge').className = contacts.length >= FREE_LIMITS.contacts ? 
+                    'badge bg-danger text-white small' : 'badge bg-warning text-dark small';
             } else {
                 document.getElementById('log-limit-badge').textContent = `${logs.length}/∞`;
                 document.getElementById('log-limit-badge').className = 'badge bg-success text-white small';
                 document.getElementById('log-limit-text').textContent = '(Unlimited)';
                 document.getElementById('skill-limit-text').textContent = '(Unlimited)';
+                document.getElementById('contact-limit-badge').textContent = `${contacts.length}/∞`;
+                document.getElementById('contact-limit-badge').className = 'badge bg-success text-white small';
             }
             
             const tText = document.getElementById('tracker-text');
@@ -925,19 +976,36 @@
             `).join('');
         }
 
+        // FUNGSI RENDER CONTACTS YANG DIPERBAIKI
         function renderContacts() {
             const container = document.getElementById('contact-container');
-            if (contacts.length === 0) {
-                container.innerHTML = '<div class="text-center py-3 text-secondary small">Belum ada kontak</div>';
+            
+            if (!contacts || contacts.length === 0) {
+                container.innerHTML = `
+                    <div class="contact-empty">
+                        <i class="bi bi-people"></i>
+                        <p class="small mt-2">Belum ada kontak kerja</p>
+                    </div>
+                `;
                 return;
             }
 
-            container.innerHTML = contacts.map((c, i) => `
-                <div class="mb-2 p-2 rounded-3 bg-white bg-opacity-5 small d-flex justify-content-between align-items-center">
-                    <div><b>${c.name}</b><br><span class="text-secondary" style="font-size:0.65rem;">${c.info}</span></div>
-                    <i class="bi bi-x-circle text-danger pointer" onclick="deleteItem('contact', ${i})"></i>
-                </div>
-            `).join('');
+            // Perbaikan: Pastikan properti name dan info ada
+            container.innerHTML = contacts.map((c, i) => {
+                // Gunakan nilai default jika properti tidak ada
+                const contactName = c.name || 'No Name';
+                const contactInfo = c.info || 'No Information';
+                
+                return `
+                    <div class="contact-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="contact-name">${contactName}</div>
+                            <div class="contact-info">${contactInfo}</div>
+                        </div>
+                        <i class="bi bi-x-circle text-danger pointer" onclick="deleteItem('contact', ${i})" title="Hapus kontak"></i>
+                    </div>
+                `;
+            }).join('');
         }
 
         function renderSkills() {
@@ -980,27 +1048,56 @@
             document.getElementById('log-desc').value = '';
         }
 
+        // FUNGSI ADD CONTACT YANG DIPERBAIKI
         function addContact() {
             const isPremium = currentUser.tier !== 'free' && currentUser.subscription;
             
+            // Cek limit untuk user free
             if (!isPremium && contacts.length >= FREE_LIMITS.contacts) {
-                alert(`⚠️ Limit ${FREE_LIMITS.contacts} kontak tercapai! Upgrade ke Premium.`);
+                alert(`⚠️ Limit ${FREE_LIMITS.contacts} kontak tercapai! Upgrade ke Premium untuk unlimited.`);
                 showPricing();
                 return;
             }
 
-            const name = document.getElementById('contact-name').value.trim();
-            const info = document.getElementById('contact-info').value.trim();
+            // Ambil nilai dari input
+            const nameInput = document.getElementById('contact-name');
+            const infoInput = document.getElementById('contact-info');
             
+            const name = nameInput.value.trim();
+            const info = infoInput.value.trim();
+            
+            // Validasi input
             if (!name) {
                 alert("Nama tidak boleh kosong!");
+                nameInput.focus();
                 return;
             }
             
-            contacts.push({ name, info });
+            if (!info) {
+                alert("Info kontak tidak boleh kosong!");
+                infoInput.focus();
+                return;
+            }
+            
+            // Tambahkan kontak dengan struktur yang benar
+            contacts.push({ 
+                name: name, 
+                info: info,
+                dateAdded: new Date().toLocaleDateString('id-ID')
+            });
+            
+            // Simpan ke localStorage
             save('contacts', contacts);
-            document.getElementById('contact-name').value = '';
-            document.getElementById('contact-info').value = '';
+            
+            // Reset input fields
+            nameInput.value = '';
+            infoInput.value = '';
+            
+            // Focus kembali ke input nama
+            nameInput.focus();
+            
+            // Tampilkan notifikasi
+            alert(`✅ Kontak "${name}" berhasil ditambahkan!`);
         }
 
         function addSkill() {
@@ -1051,18 +1148,46 @@
         function deleteItem(type, i) {
             if (!confirm("Hapus data ini?")) return;
             
-            if (type === 'log') logs.splice(i, 1), save('logs', logs);
-            else if (type === 'contact') contacts.splice(i, 1), save('contacts', contacts);
-            else if (type === 'skill') skills.splice(i, 1), save('skills', skills);
+            if (type === 'log') {
+                logs.splice(i, 1);
+                save('logs', logs);
+                alert('✅ Logbook berhasil dihapus!');
+            } else if (type === 'contact') {
+                const deletedName = contacts[i].name || 'Kontak';
+                contacts.splice(i, 1);
+                save('contacts', contacts);
+                alert(`✅ Kontak "${deletedName}" berhasil dihapus!`);
+            } else if (type === 'skill') {
+                skills.splice(i, 1);
+                save('skills', skills);
+                alert('✅ Skill berhasil dihapus!');
+            }
         }
 
         function exportData() {
             let txt = `INTERNHUB REPORT - ${currentUser.name}\n`;
             txt += `${'='.repeat(50)}\n\n`;
             
-            logs.forEach((l, i) => {
-                txt += `[${l.date}] ${l.task}\n${l.desc}\n\n`;
-            });
+            if (logs.length > 0) {
+                txt += `LOGBOOK:\n${'-'.repeat(20)}\n`;
+                logs.forEach((l, i) => {
+                    txt += `[${i+1}] ${l.date}: ${l.task}\n   ${l.desc}\n\n`;
+                });
+            }
+            
+            if (contacts.length > 0) {
+                txt += `KONTAK KERJA:\n${'-'.repeat(20)}\n`;
+                contacts.forEach((c, i) => {
+                    txt += `[${i+1}] ${c.name || 'No Name'}\n   ${c.info || 'No Info'}\n\n`;
+                });
+            }
+            
+            if (skills.length > 0) {
+                txt += `SKILL YANG DIPELAJARI:\n${'-'.repeat(25)}\n`;
+                skills.forEach((s, i) => {
+                    txt += `${i+1}. ${s}\n`;
+                });
+            }
             
             const blob = new Blob([txt], { type: 'text/plain' });
             const a = document.createElement('a');
